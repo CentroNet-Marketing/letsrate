@@ -2,10 +2,10 @@ require 'active_support/concern'
 module Letsrate
   extend ActiveSupport::Concern
 
-  def rate(stars, user, dimension=nil, dirichlet_method=false)
+  def rate(stars, user, dimension=nil, allow_multiple_rate=false, dirichlet_method=false)
     dimension = nil if dimension.blank?
 
-    if can_rate? user, dimension
+    if allow_multiple_rate or can_rate? user, dimension
       rates(dimension).create! do |r|
         r.stars = stars
         r.rater_id = user.id
