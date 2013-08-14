@@ -8,7 +8,7 @@ module Letsrate
     if can_rate? user, dimension
       rates(dimension).create! do |r|
         r.stars = stars
-        r.rater = user
+        r.rater_id = user.id
       end
       update_rate_average(stars, dimension)
     else
@@ -64,14 +64,14 @@ module Letsrate
 
 
       dimensions.each do |dimension|
-        has_many "#{dimension}_rates", :dependent => :destroy,
+        has_many "#{dimension}_rates".to_sym, :dependent => :destroy,
                                        :conditions => {:dimension => dimension.to_s},
                                        :class_name => "Rate",
                                        :as => :rateable
 
-        has_many "#{dimension}_raters", :through => "#{dimension}_rates", :source => :rater
+        has_many "#{dimension}_raters".to_sym, :through => "#{dimension}_rates".to_sym, :source => :rater
 
-        has_one "#{dimension}_average", :as => :cacheable, :class_name => "RatingCache",
+        has_one "#{dimension}_average".to_sym, :as => :cacheable, :class_name => "RatingCache",
                                         :dependent => :destroy, :conditions => {:dimension => dimension.to_s}
       end
     end
