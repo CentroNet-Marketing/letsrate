@@ -9,8 +9,9 @@ module Letsrate
       rates(dimension).create! do |r|
         r.stars = stars
         r.rater_id = user.id
+        r.save!
       end
-      if dirichlet_method 
+      if dirichlet_method
         update_rate_average_dirichlet(stars, dimension)
       else
         update_rate_average(stars, dimension)
@@ -27,38 +28,22 @@ module Letsrate
     posterior = dp.merge(stars_group){|key, a, b| a + b}
     sum = posterior.map{ |i, v| v }.inject { |a, b| a + b }
     davg = posterior.map{ |i, v| i * v }.inject { |a, b| a + b }.to_f / sum
-    
-    if average(dimension).nil?
-      RatingCache.create! do |avg|
-        avg.cacheable_id = self.id
-        avg.cacheable_type = self.class.name
-        avg.qty = 1
-        avg.avg = davg
-        avg.dimension = dimension
-      end
-    else
-      a = average(dimension)
-      a.qty = rates(dimension).count
-      a.avg = davg
-      a.save!(validate: false)
-    end
+
+    rating_cache_properties = {:cacheable_id => self.id,:cacheable_type => self.class.name,:dimension => dimension}
+    rating_cache = RatingCache.where(rating_cache_properties).first || RatingCache.new(rating_cache_properties)
+    all_rates = Rate.where(:rateable_id => self.id, :rateable_type => self.class.name, :dimension => dimension)
+    rating_cache.qty = rates(dimension).count
+    rating_cache.avg = davg
+    rating_cache.save!
   end
-  
+
   def update_rate_average(stars, dimension=nil)
-    if average(dimension).nil?
-      RatingCache.create! do |avg|
-        avg.cacheable_id = self.id
-        avg.cacheable_type = self.class.name
-        avg.avg = stars
-        avg.qty = 1
-        avg.dimension = dimension
-      end
-    else
-      a = average(dimension)
-      a.qty = rates(dimension).count
-      a.avg = rates(dimension).average(:stars)
-      a.save!(validate: false)
-    end
+    rating_cache_properties = {:cacheable_id => self.id,:cacheable_type => self.class.name,:dimension => dimension}
+    rating_cache = RatingCache.where(rating_cache_properties).first || RatingCache.new(rating_cache_properties)
+    all_rates = Rate.where(:rateable_id => self.id, :rateable_type => self.class.name, :dimension => dimension)
+    rating_cache.qty = all_rates.count
+    rating_cache.avg = all_rates.map(&:stars).sum.to_f / rating_cache.qty
+    rating_cache.save!
   end
 
   def average(dimension=nil)
